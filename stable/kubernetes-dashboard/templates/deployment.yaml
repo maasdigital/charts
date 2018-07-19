@@ -31,13 +31,25 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
+{{- if .Values.enableInsecure }}
+          - --insecure-bind-address=0.0.0.0
+          - --insecure-port=9090
+          - --enable-insecure-login
+{{- else }}
           - --auto-generate-certificates
+{{- end }}
+
 {{- if .Values.extraArgs }}
 {{ toYaml .Values.extraArgs | indent 10 }}
 {{- end }}
         ports:
+{{- if .Values.enableInsecure }}
+        - name: http
+          containerPort: 9090
+{{- else }}
         - name: https
           containerPort: 8443
+{{- end }}
           protocol: TCP
         volumeMounts:
         - name: kubernetes-dashboard-certs
@@ -47,9 +59,16 @@ spec:
           name: tmp-volume
         livenessProbe:
           httpGet:
+{{- if .Values.enableInsecure }}
+            scheme: HTTP
+            path: /
+            port: 9090
+{{- else }}
             scheme: HTTPS
             path: /
             port: 8443
+{{- end }}
+
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources:
